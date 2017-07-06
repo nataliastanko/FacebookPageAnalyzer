@@ -1,0 +1,21 @@
+{
+    "name": "nataliastanko/FacebookPageAnalyzer",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Natalia Stanko",
+            "email": "contact@nataliastanko.com"
+        }
+    ],
+    "require": {
+        "php": ">=5.6",
+        "psr/log": "~1.0",
+        "silex/silex": "~2.0",
+        "vlucas/phpdotenv": "^2.4",
+        "facebook/graph-sdk": "^5.5"
+    },
+    "require-dev": {
+        "squizlabs/php_codesniffer": "~3.0"
+    },
+    "minimum-stability": "stable"
+}
