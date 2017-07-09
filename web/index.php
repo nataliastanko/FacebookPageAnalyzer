@@ -38,21 +38,6 @@ $fb = new \Facebook\Facebook([
 ]);
 
 /**
- * Make HTTP GET request to the endpoint
- * Get data out of Facebook's platform
- * Requests are passed to the API at graph.facebook.com/graph-video.facebook.com
- *
- * Test here https://developers.facebook.com/tools/explorer
- *
- * @link https://github.com/facebook/php-graph-sdk
- * @link https://github.com/facebook/php-graph-sdk/blob/5.5/docs/reference.md
- * @link https://developers.facebook.com/docs/php/FacebookResponse/5.0.0
- *
- * @return Facebook\FacebookResponse
- */
-
-
-/**
  * Create a stats array with users types of activity
  * @param  Facebook\FacebookResponse $response
  * @param  array $weights weights of single stats
@@ -62,7 +47,7 @@ function processFbPageActivity($fb, $weights = null) {
 
     if (!$weights) {
         $weights['like'] = 1;
-        $weights['commentlike'] = 1;
+        $weights['commentslikes'] = 1;
         $weights['comment'] = 2;
         $weights['post'] = 3;
     }
@@ -138,11 +123,11 @@ function processFbPageActivity($fb, $weights = null) {
                 $group[$comment['from']['id']]['comments'] += $weights['comment'];
 
                 if (isset($comment['likes'])) {
-                    foreach ($comment['likes'] as $commentlike) {
-                        if (!isset($group[$commentlike['id']])) {
-                        $group[$commentlike['id']] = $addrow($commentlike['name']);
+                    foreach ($comment['likes'] as $commentslikes) {
+                        if (!isset($group[$commentslikes['id']])) {
+                        $group[$commentslikes['id']] = $addrow($commentslikes['name']);
                         }
-                        $group[$commentlike['id']]['commentslikes'] += $weights['commentlike'];
+                        $group[$commentslikes['id']]['commentslikes'] += $weights['commentslikes'];
                     }
                 }
             }
@@ -168,8 +153,8 @@ function sortResultBySum($group) {
 
     usort($group, function ($a,$b) {
 
-        $sumA = $a['likes'] + $a['comments'] + $a['posts'];
-        $sumB = $b['likes'] + $b['comments'] + $b['posts'];
+        $sumA = $a['likes'] + $a['comments'] + $a['posts'] + $a['commentslikes'];
+        $sumB = $b['likes'] + $b['comments'] + $b['posts'] + $b['commentslikes'];
 
         return $sumB - $sumA;
 
@@ -178,6 +163,19 @@ function sortResultBySum($group) {
     return $group;
 }
 
+/**
+ * Make HTTP GET request to the endpoint
+ * Get data out of Facebook's platform
+ * Requests are passed to the API at graph.facebook.com/graph-video.facebook.com
+ *
+ * Test here https://developers.facebook.com/tools/explorer
+ *
+ * @link https://github.com/facebook/php-graph-sdk
+ * @link https://github.com/facebook/php-graph-sdk/blob/5.5/docs/reference.md
+ * @link https://developers.facebook.com/docs/php/FacebookResponse/5.0.0
+ *
+ * @return Facebook\FacebookResponse
+ */
 $app->get('/', function () use ($app, $fb) {
 
     $url = '/'.getenv('FB_PAGE_ID').'/?fields=id,name,username,picture,cover,link,website,about,fan_count';
@@ -218,6 +216,8 @@ $app->get('/', function () use ($app, $fb) {
     }
 
     $group = processFbPageActivity($fb, $weights = null);
+
+    $group = sortResultBySum($group);
 
     // select top fans
     $limit = 20;
