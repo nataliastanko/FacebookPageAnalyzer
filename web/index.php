@@ -40,10 +40,12 @@ $fbconfig = [
 /**
  * Create a stats array with users types of activity
  * @param  Facebook\FacebookResponse $response
+ * @param  integer $pageId numer ID
+ * @param  DateTime $xAgo what period of time
  * @param  array $weights weights of single stats
  * @return array group
  */
-function processFbPageActivity($fbconfig, $pageId, $weights = null) {
+function processFbPageActivity($fbconfig, $pageId, \DateTime $xAgo, $weights = null) {
 
     if (!$weights) {
         $weights['like'] = 1;
@@ -80,9 +82,6 @@ function processFbPageActivity($fbconfig, $pageId, $weights = null) {
     $feedEdge = $response->getGraphEdge();
 
     $labels = [];
-
-    $xAgo = new DateTime('now');
-    $xAgo->modify('-1 month');
 
     $addrow = function($name) {
         return [
@@ -231,7 +230,7 @@ function sortResultBySum($group) {
  *
  * @return Facebook\FacebookResponse
  */
-$app->get('/', function () use ($app, $fbconfig) {
+$app->match('/', function (Request $request) use ($app, $fbconfig) {
 
     $url = '/'.getenv('FB_PAGE_ID').'/?fields=id,name,username,picture,cover,link,website,about,fan_count';
 
@@ -272,22 +271,74 @@ $app->get('/', function () use ($app, $fbconfig) {
         exit;
     }
 
-    $group = processFbPageActivity($fbconfig, $page['id'], $weights = null);
+    $xAgo = $request->get('xAgo');
 
-    $group = sortResultBySum($group);
+    $xAgo = \DateTime::createFromFormat('Y-m-d', $xAgo);
+
+    if (!$xAgo) {
+        // default value
+        $xAgo = new DateTime('now');
+        $xAgo->modify('-1 month');
+    }
+    $xAgo->setTime(00, 00);
+
+    $group = processFbPageActivity($fbconfig, $page['id'], $xAgo, $weights = null);
+
+    $stats = sortResultBySum($group);
 
     // select top fans
     $limit = 20;
-    $group = array_slice($group, 0, $limit);
+    $stats = array_slice($stats, 0, $limit);
+
+    $fp = fopen('../data/page_info.json', 'w');
+    fwrite($fp, json_encode($page));
+    fclose($fp);
+
+    $fp = fopen('../data/grouped_page_results.json', 'w');
+    fwrite($fp, json_encode($stats));
+    fclose($fp);
 
     return $app['twig']->render('index.twig', [
         'page' => $page,
-        'labels' => array_column($group, 'user'),
-        'posts' => array_column($group, 'posts'),
-        'likes' => array_column($group, 'likes'),
-        'comments' => array_column($group, 'comments'),
-        'commentslikes' => array_column($group, 'commentslikes'),
-        'shares' => array_column($group, 'shares')
+        'labels' => array_column($stats, 'user'),
+        'posts' => array_column($stats, 'posts'),
+        'likes' => array_column($stats, 'likes'),
+        'comments' => array_column($stats, 'comments'),
+        'commentslikes' => array_column($stats, 'commentslikes'),
+        'shares' => array_column($stats, 'shares'),
+        'xAgo' => $xAgo,
+    ]);
+
+});
+
+$app->match('/dev', function (Request $request) use ($app) {
+
+    $xAgo = $request->get('xAgo');
+
+    $xAgo = \DateTime::createFromFormat('Y-m-d', $xAgo);
+
+    if (!$xAgo) {
+        // default value
+        $xAgo = new DateTime('now');
+        $xAgo->modify('-1 month');
+    }
+    $xAgo->setTime(00, 00);
+
+    $string = file_get_contents('../data/page_info.json');
+    $page = json_decode($string, true);
+
+    $string = file_get_contents('../data/grouped_page_results.json');
+    $stats = json_decode($string, true);
+
+    return $app['twig']->render('index.twig', [
+        'page' => $page,
+        'labels' => array_column($stats, 'user'),
+        'posts' => array_column($stats, 'posts'),
+        'likes' => array_column($stats, 'likes'),
+        'comments' => array_column($stats, 'comments'),
+        'commentslikes' => array_column($stats, 'commentslikes'),
+        'shares' => array_column($stats, 'shares'),
+        'xAgo' => $xAgo,
     ]);
 
 });

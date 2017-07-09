@@ -1,6 +1,8 @@
 !var/SymfonyRequirements.php
 /vendor/
 web/assets/bootstrap
+/data/*
+!data/.gitkeep
 
 # Cache and logs (Symfony2)
 /app/cache/*
