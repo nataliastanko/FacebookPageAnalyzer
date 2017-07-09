@@ -7,11 +7,12 @@
     <p class="lead">{{ page.about }}</p>
   </div>
 
-  <h2>Fans count: {{ page.fan_count|number_format(0, '.', ' ') }}</small></h2>
+  <h2>Fans: {{ page.fan_count|number_format(0, '.', ' ') }}</small></h2>
 
   <img src="{{ page.cover.source }}">
-
+  <br />
   <a href="{{ page.website }}"> {{ page.name }}'s website</a>
+  <hr />
 
   <canvas id="myChart" width="400" height="400"></canvas>
   <script>
@@ -22,35 +23,35 @@
             labels: {{ labels|json_encode()|raw }},
             datasets: [
             {
-                label: 'Posts count',
+                label: 'Posts',
                 data: {{ posts|json_encode() }},
                 backgroundColor: 'rgba(255, 159, 64, 0.2)',
                 borderColor: 'rgba(255, 159, 64, 1)',
                 borderWidth: 1
             },
             {
-                label: 'Likes count',
+                label: 'Likes',
                 data: {{ likes|json_encode() }},
                 backgroundColor: 'rgba(153, 102, 255, 0.2)',
                 borderColor: 'rgba(153, 102, 255, 1)',
                 borderWidth: 1
             },
             {
-                label: 'Comments count',
+                label: 'Comments',
                 data: {{ comments|json_encode() }},
                 backgroundColor: 'rgba(75, 192, 192, 0.2)',
                 borderColor: 'rgba(75, 192, 192, 1)',
                 borderWidth: 1
             },
             {
-                label: 'Comments likes count',
+                label: 'Comments likes',
                 data: {{ commentslikes|json_encode() }},
                 backgroundColor: 'rgba(255, 206, 86, 0.2)',
                 borderColor: 'rgba(255, 206, 86, 1)',
                 borderWidth: 1
             },
             {
-                label: 'Shares count',
+                label: 'Shares',
                 data: {{ shares|json_encode() }},
                 backgroundColor: 'rgba(54, 162, 235, 0.2)',
                 borderColor: 'rgba(54, 162, 235, 1)',

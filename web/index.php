@@ -193,7 +193,7 @@ function processFbPageActivity($fbconfig, $pageId, $weights = null) {
 
         $i++;
 
-    } while ($i < 1 && ($postDate > $xAgo) && $feedEdge = $fb->next($feedEdge));
+    } while ($i < 10 && ($postDate > $xAgo) && $feedEdge = $fb->next($feedEdge));
 
     return $group;
 
