@@ -2,7 +2,16 @@
 
 {% block content %}
 
-  <h1>Posts per user</h1>
+  <div class="page-header">
+    <h1><img src="{{ page.picture.url }}">&nbsp;{{ page.name }}<small>&nbsp;Fanpage <a href="{{ page.link }}">{{ page.username }}</a></h1>
+    <p class="lead">{{ page.about }}</p>
+  </div>
+
+  <h2>Fans count: {{ page.fan_count|number_format(0, '.', ' ') }}</small></h2>
+
+  <img src="{{ page.cover.source }}">
+
+  <a href="{{ page.website }}"> {{ page.name }}'s website</a>
 
   <canvas id="myChart" width="400" height="400"></canvas>
   <script>
@@ -50,6 +59,10 @@
             ]
         },
         options: {
+            title: {
+                display: true,
+                text: 'Activity stats per user'
+            },
             scales: {
                 yAxes: [{
                     stacked: true,
@@ -60,6 +73,7 @@
                 xAxes: [{
                     stacked: true,
                     ticks: {
+                        autoSkip: false,
                         beginAtZero:true
                     }
                 }]
