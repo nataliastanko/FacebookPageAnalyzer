@@ -30,12 +30,12 @@ try {
     exit;
 }
 
-$fb = new \Facebook\Facebook([
+$fbconfig = [
     'app_id' => getenv('FB_APP_ID'),
     'app_secret' => getenv('FB_APP_SECRET'),
     'default_graph_version' => 'v2.9',
     'default_access_token' => getenv('FB_DEFAULT_ACCESS_TOKEN')
-]);
+];
 
 /**
  * Create a stats array with users types of activity
@@ -43,16 +43,19 @@ $fb = new \Facebook\Facebook([
  * @param  array $weights weights of single stats
  * @return array group
  */
-function processFbPageActivity($fb, $weights = null) {
+function processFbPageActivity($fbconfig, $pageId, $weights = null) {
 
     if (!$weights) {
         $weights['like'] = 1;
         $weights['commentslikes'] = 1;
         $weights['comment'] = 2;
         $weights['post'] = 3;
+        $weights['share'] = 3;
     }
 
     $url = '/'.getenv('FB_PAGE_ID').'/feed?fields=id,from{name},created_time,comments{from,likes},likes&limit=100';
+
+    $fb = new \Facebook\Facebook($fbconfig);
 
     try {
         /**
@@ -96,48 +99,100 @@ function processFbPageActivity($fb, $weights = null) {
 
     do {
 
-    // foreach ($responseArray['data'] as $post) {
-    foreach ($feedEdge as $status) {
-        $post = $status->asArray();
+        // foreach ($responseArray['data'] as $post) {
+        foreach ($feedEdge as $status) {
+            $post = $status->asArray();
 
-        if (!isset($group[$post['from']['id']])) {
-            $group[$post['from']['id']] = $addrow($post['from']['name']);
-        }
-
-        $group[$post['from']['id']]['posts'] += $weights['post'];
-
-        if (isset($post['likes'])) {
-            foreach ($post['likes'] as $like) {
-                if (!isset($group[$like['id']])) {
-                    $group[$like['id']] = $addrow($like['name']);
-                }
-                $group[$like['id']]['likes'] += $weights['like'];
+            if (!isset($group[$post['from']['id']])) {
+                $group[$post['from']['id']] = $addrow($post['from']['name']);
             }
-        }
 
-        if (isset($post['comments'])) {
-            foreach ($post['comments'] as $comment) {
-                if (!isset($group[$comment['from']['id']])) {
-                    $group[$comment['from']['id']] = $addrow($comment['from']['name']);
+            $group[$post['from']['id']]['posts'] += $weights['post'];
+
+            // get likes from this post
+            if (isset($post['likes'])) {
+                foreach ($post['likes'] as $like) {
+                    if (!isset($group[$like['id']])) {
+                        $group[$like['id']] = $addrow($like['name']);
+                    }
+                    $group[$like['id']]['likes'] += $weights['like'];
                 }
-                $group[$comment['from']['id']]['comments'] += $weights['comment'];
+            }
 
-                if (isset($comment['likes'])) {
-                    foreach ($comment['likes'] as $commentslikes) {
-                        if (!isset($group[$commentslikes['id']])) {
-                        $group[$commentslikes['id']] = $addrow($commentslikes['name']);
+            // get comments from this post
+            if (isset($post['comments'])) {
+                foreach ($post['comments'] as $comment) {
+                    if (!isset($group[$comment['from']['id']])) {
+                        $group[$comment['from']['id']] = $addrow($comment['from']['name']);
+                    }
+                    $group[$comment['from']['id']]['comments'] += $weights['comment'];
+
+                    // get likes from this post's comment
+                    if (isset($comment['likes'])) {
+                        foreach ($comment['likes'] as $commentslikes) {
+                            if (!isset($group[$commentslikes['id']])) {
+                            $group[$commentslikes['id']] = $addrow($commentslikes['name']);
+                            }
+                            $group[$commentslikes['id']]['commentslikes'] += $weights['commentslikes'];
                         }
-                        $group[$commentslikes['id']]['commentslikes'] += $weights['commentslikes'];
                     }
                 }
             }
+
+            $postDate = $post['created_time'];
+
+            // get shares of this post
+            if (isset($post['shares'])) {
+
+                $urlShares = '/'.$pageId.'_'.$post['id'].'/sharedposts?fields=from,created_time';
+
+                try {
+                    $fbShares = new \Facebook\Facebook($fbconfig);
+
+                    /**
+                     * @var Facebook\FacebookResponse
+                     */
+                    $sharesResponse = $fbShares->get($urlShares);
+
+                } catch(\Facebook\Exceptions\FacebookResponseException $e) {
+                    // When Graph returns an error
+                    echo __FILE__.':'.__LINE__.' '.'Graph returned an error: ' . $e->getMessage();
+                    exit;
+                } catch(\Facebook\Exceptions\FacebookSDKException $e) {
+                    // When validation fails or other local issues
+                    echo __FILE__.':'.__LINE__.' '.'Facebook SDK returned an error: ' . $e->getMessage();
+                    exit;
+                }
+
+                /**
+                 * Page 1
+                 * @var Facebook\GraphNodes\GraphEdge
+                 */
+                $postSharesEdge = $sharesResponse->getGraphEdge();
+
+                $i = 0;
+
+                do {
+
+                    // foreach ($responseArray['data'] as $post) {
+                    foreach ($postSharesEdge as $shareStatus) {
+                        $share = $shareStatus->asArray();
+
+                        if (!isset($group[$share['from']['id']])) {
+                            $group[$share['from']['id']] = $addrow($share['from']['name']);
+                        }
+
+                        $group[$share['from']['id']]['shares'] += $weights['share'];
+                    }
+
+                    $i += 25; // share pagination
+
+                } while ($i < $post['shares']['count'] && $postSharesEdge = $fbShares->next($postSharesEdge));
+            }
         }
 
-        $postDate = $post['created_time'];
+        $i++;
 
-        // $group[$post['from']['id']]['shares'] += 1;
-    }
-    $i++;
     } while ($i < 1 && ($postDate > $xAgo) && $feedEdge = $fb->next($feedEdge));
 
     return $group;
@@ -153,8 +208,8 @@ function sortResultBySum($group) {
 
     usort($group, function ($a,$b) {
 
-        $sumA = $a['likes'] + $a['comments'] + $a['posts'] + $a['commentslikes'];
-        $sumB = $b['likes'] + $b['comments'] + $b['posts'] + $b['commentslikes'];
+        $sumA = $a['likes'] + $a['comments'] + $a['posts'] + $a['commentslikes'] + $a['shares'];
+        $sumB = $b['likes'] + $b['comments'] + $b['posts'] + $b['commentslikes'] + $b['shares'];
 
         return $sumB - $sumA;
 
@@ -176,9 +231,11 @@ function sortResultBySum($group) {
  *
  * @return Facebook\FacebookResponse
  */
-$app->get('/', function () use ($app, $fb) {
+$app->get('/', function () use ($app, $fbconfig) {
 
     $url = '/'.getenv('FB_PAGE_ID').'/?fields=id,name,username,picture,cover,link,website,about,fan_count';
+
+    $fb = new \Facebook\Facebook($fbconfig);
 
     try {
         /**
@@ -197,7 +254,7 @@ $app->get('/', function () use ($app, $fb) {
         exit;
     }
 
-    $url = '/'.getenv('FB_PAGE_ID').'/feed?fields=id,from{name},created_time,comments{from,likes},likes&limit=100';
+    $url = '/'.getenv('FB_PAGE_ID').'/feed?fields=id,from{name},created_time,comments{from,likes},likes,shares&limit=100';
 
     try {
         /**
@@ -215,7 +272,7 @@ $app->get('/', function () use ($app, $fb) {
         exit;
     }
 
-    $group = processFbPageActivity($fb, $weights = null);
+    $group = processFbPageActivity($fbconfig, $page['id'], $weights = null);
 
     $group = sortResultBySum($group);
 
@@ -230,6 +287,7 @@ $app->get('/', function () use ($app, $fb) {
         'likes' => array_column($group, 'likes'),
         'comments' => array_column($group, 'comments'),
         'commentslikes' => array_column($group, 'commentslikes'),
+        'shares' => array_column($group, 'shares')
     ]);
 
 });
