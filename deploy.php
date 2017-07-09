@@ -7,13 +7,6 @@ require 'recipe/common.php';
 /**
  * Deploy commands:
  *
- * dep -vv deploy local
- * dep rollback local
- * dep -vv deploy:unlock local
- *
- * dep -vv deploy stage
- * dep rollback stage
- *
  * dep deploy prod
  * dep rollback prod
  *
