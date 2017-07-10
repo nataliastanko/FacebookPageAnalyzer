@@ -47,14 +47,6 @@ $fbconfig = [
  */
 function processFbPageActivity($fbconfig, $pageId, \DateTime $xAgo, $weights = null) {
 
-    if (!$weights) {
-        $weights['like'] = 1;
-        $weights['commentslikes'] = 1;
-        $weights['comment'] = 2;
-        $weights['post'] = 3;
-        $weights['share'] = 3;
-    }
-
     $url = '/'.getenv('FB_PAGE_ID').'/feed?fields=id,from{name},created_time,comments{from,likes},likes&limit=100';
 
     $fb = new \Facebook\Facebook($fbconfig);
@@ -132,7 +124,7 @@ function processFbPageActivity($fbconfig, $pageId, \DateTime $xAgo, $weights = n
                             if (!isset($group[$commentslikes['id']])) {
                             $group[$commentslikes['id']] = $addrow($commentslikes['name']);
                             }
-                            $group[$commentslikes['id']]['commentslikes'] += $weights['commentslikes'];
+                            $group[$commentslikes['id']]['commentslikes'] += $weights['commentslike'];
                         }
                     }
                 }
@@ -232,6 +224,23 @@ function sortResultBySum($group) {
  */
 $app->match('/', function (Request $request) use ($app, $fbconfig) {
 
+    $xAgo = $request->get('xAgo');
+
+    $xAgo = \DateTime::createFromFormat('Y-m-d', $xAgo);
+
+    if (!$xAgo) {
+        // default value
+        $xAgo = new DateTime('now');
+        $xAgo->modify('-1 month');
+    }
+    $xAgo->setTime(00, 00);
+
+    $weights['like'] = $request->get('likeWeight') && (is_numeric($request->get('likeWeight'))) ? (int) $request->get('likeWeight') : 1;
+    $weights['commentslike'] = $request->get('commentslikeWeight') && (is_numeric($request->get('commentslikeWeight'))) ? (int) $request->get('commentslikeWeight') : 1;
+    $weights['comment'] = $request->get('commentWeight') && (is_numeric($request->get('commentWeight'))) ? (int) $request->get('commentWeight') : 2;
+    $weights['post'] = $request->get('postWeight') && (is_numeric($request->get('postWeight'))) ? (int) $request->get('postWeight') : 3;
+    $weights['share'] = $request->get('shareWeight') && (is_numeric($request->get('shareWeight'))) ? (int) $request->get('shareWeight') : 3;
+
     $url = '/'.getenv('FB_PAGE_ID').'/?fields=id,name,username,picture,cover,link,website,about,fan_count';
 
     $fb = new \Facebook\Facebook($fbconfig);
@@ -271,18 +280,7 @@ $app->match('/', function (Request $request) use ($app, $fbconfig) {
         exit;
     }
 
-    $xAgo = $request->get('xAgo');
-
-    $xAgo = \DateTime::createFromFormat('Y-m-d', $xAgo);
-
-    if (!$xAgo) {
-        // default value
-        $xAgo = new DateTime('now');
-        $xAgo->modify('-1 month');
-    }
-    $xAgo->setTime(00, 00);
-
-    $group = processFbPageActivity($fbconfig, $page['id'], $xAgo, $weights = null);
+    $group = processFbPageActivity($fbconfig, $page['id'], $xAgo, $weights);
 
     $stats = sortResultBySum($group);
 
@@ -307,6 +305,7 @@ $app->match('/', function (Request $request) use ($app, $fbconfig) {
         'commentslikes' => array_column($stats, 'commentslikes'),
         'shares' => array_column($stats, 'shares'),
         'xAgo' => $xAgo,
+        'weights' => $weights,
     ]);
 
 });
@@ -324,6 +323,12 @@ $app->match('/dev', function (Request $request) use ($app) {
     }
     $xAgo->setTime(00, 00);
 
+    $weights['like'] = 1;
+    $weights['commentslike'] = 1;
+    $weights['comment'] = 2;
+    $weights['post'] = 3;
+    $weights['share'] = 3;
+
     $string = file_get_contents('../data/page_info.json');
     $page = json_decode($string, true);
 
@@ -339,6 +344,7 @@ $app->match('/dev', function (Request $request) use ($app) {
         'commentslikes' => array_column($stats, 'commentslikes'),
         'shares' => array_column($stats, 'shares'),
         'xAgo' => $xAgo,
+        'weights' => $weights,
     ]);
 
 });
