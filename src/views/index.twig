@@ -20,36 +20,34 @@
     <div class="form-group">
         Weights for:
         <label for="postWeight">post</label>
-        <select id="postWeight" name="postWeight" class="form-control">
-          <option>1</option>
-          <option>2</option>
-          <option>3</option>
-          <option>4</option>
-          <option>5</option>
+        <select id="postWeight" name="post" class="form-control">
+          <option{% if weights.post == 1%} selected{% endif %}>1</option>
+          <option{% if weights.post == 2%} selected{% endif %}>2</option>
+          <option{% if weights.post == 3%} selected{% endif %}>3</option>
         </select>
         <label for="commentWeight">comment</label>
         <select id="commentWeight" name="commentWeight" class="form-control">
-          <option>1</option>
-          <option>2</option>
-          <option>3</option>
+          <option{% if weights.comment == 1%} selected{% endif %}>1</option>
+          <option{% if weights.comment == 2%} selected{% endif %}>2</option>
+          <option{% if weights.comment == 3%} selected{% endif %}>3</option>
         </select>
         <label for="likeWeight">like</label>
         <select id="likeWeight" name="likeWeight" class="form-control">
-          <option>1</option>
-          <option>2</option>
-          <option>3</option>
+          <option{% if weights.like == 1%} selected{% endif %}>1</option>
+          <option{% if weights.like == 2%} selected{% endif %}>2</option>
+          <option{% if weights.like == 3%} selected{% endif %}>3</option>
         </select>
         <label for="commentslikeWeight">comments like</label>
         <select id="commentslikeWeight" name="commentslikeWeight" class="form-control">
-          <option>1</option>
-          <option>2</option>
-          <option>5</option>
+          <option{% if weights.commentslike == 1%} selected{% endif %}>1</option>
+          <option{% if weights.commentslike == 2%} selected{% endif %}>2</option>
+          <option{% if weights.commentslike == 3%} selected{% endif %}>5</option>
         </select>
         <label for="shareWeight">share</label>
         <select id="shareWeight" name="shareWeight" class="form-control">
-          <option>1</option>
-          <option>2</option>
-          <option>3</option>
+          <option{% if weights.share == 1%} selected{% endif %}>1</option>
+          <option{% if weights.share == 2%} selected{% endif %}>2</option>
+          <option{% if weights.share == 3%} selected{% endif %}>3</option>
         </select>
     </div>
 
